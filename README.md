@@ -1,5 +1,9 @@
 # storybook-llms-extractor
 
+> **注意**: 本项目是从 `@fluentui/storybook-llms-extractor` 抽离出来的独立项目。
+>
+> **Note**: This project is extracted from `@fluentui/storybook-llms-extractor` as a standalone project.
+
 A CLI tool that extracts documentation from Storybook builds and converts it to LLM-friendly formats, following the [llmstxt.org](https://llmstxt.org/) specification.
 
 ## Overview
@@ -19,9 +23,9 @@ This tool processes Storybook production builds to generate comprehensive docume
 ## Installation
 
 ```bash
-npm install @fluentui/storybook-llms-extractor
+npm install @acring/storybook-llms-extractor
 # or
-yarn add @fluentui/storybook-llms-extractor
+yarn add @acring/storybook-llms-extractor
 ```
 
 ## Usage
@@ -51,13 +55,13 @@ You can use a configuration file (e.g., `llms.config.js`) for complex setups:
 ```javascript
 module.exports = {
   distPath: 'storybook-static',
-  summaryBaseUrl: 'https://react.fluentui.dev',
+  summaryBaseUrl: 'https://react.acring.dev',
   summaryTitle: 'Fluent UI React v9',
   summaryDescription: 'Fluent UI React components documentation',
   refs: [
     {
       title: 'Charts v9',
-      url: 'https://charts.fluentui.dev',
+      url: 'https://charts.acring.dev',
     },
   ],
 };
@@ -172,7 +176,7 @@ npm link
 
 # Use in another project
 cd /path/to/your/storybook
-npm link @fluentui/storybook-llms-extractor
+npm link @acring/storybook-llms-extractor
 storybook-llms-extractor --distPath storybook-static
 ```
 
