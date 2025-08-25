@@ -101,7 +101,12 @@ export async function extractStorybookData({ distPath }: Args): Promise<Storyboo
     const storeItems = await extractAllStoriesFromStorybook(context, distPath);
 
     // Extract content for all MDX pages
+    console.log(`Processing ${storeItems.length} store items...`);
     for (const item of storeItems) {
+      if (!item || !item.stories) {
+        console.warn('Skipping invalid item:', item);
+        continue;
+      }
       const stories = Object.values(item.stories);
 
       if (stories.length > 0) {
@@ -143,11 +148,19 @@ type StorybookStoryStore = {
    * Caches all CSF files in the Storybook store.
    * This method must be called before accessing `cachedCSFFiles`.
    */
-  cacheAllCSFFiles: () => Promise<void>;
+  cacheAllCSFFiles?: () => Promise<void>;
   /**
    * CSF files become available after `cacheAllCSFFiles()` is resolved.
    **/
   cachedCSFFiles?: Record<string, StorybookStoreItem>;
+  
+  // Additional properties for different Storybook versions
+  cache?: Record<string, StorybookStoreItem>;
+  stories?: Record<string, StorybookStoreItem>;
+  extract?: () => Promise<Record<string, StorybookStoreItem>>;
+  
+  // Allow any additional properties for flexibility
+  [key: string]: any;
 };
 
 /**
@@ -158,7 +171,12 @@ interface StorybookGlobals extends Window {
    * Storybook Client API, contains story store and other metadata.
    * `storyStore` is used for Storybook 7, `storyStoreValue` for >= 8.
    */
-  __STORYBOOK_PREVIEW__?: { storyStore: StorybookStoryStore } | { storyStoreValue: StorybookStoryStore };
+  __STORYBOOK_PREVIEW__?: {
+    storyStore?: StorybookStoryStore;
+    storyStoreValue?: StorybookStoryStore;
+    extract?: () => Promise<Record<string, StorybookStoreItem>>;
+    [key: string]: any;
+  };
 }
 
 /**
@@ -191,26 +209,104 @@ async function extractAllStoriesFromStorybook(context: BrowserContext, distPath:
         throw new Error('Unable to find Storybook preview');
       }
 
+      console.log('Preview object keys:', Object.keys(preview));
+
       if ('storyStore' in preview && preview.storyStore) {
+        console.log('Found storyStore in preview');
         return preview.storyStore;
       }
 
       if ('storyStoreValue' in preview && preview.storyStoreValue) {
+        console.log('Found storyStoreValue in preview');
         return preview.storyStoreValue;
       }
 
       throw new Error('Unable to find Storybook story store');
     };
 
-    const storyStore = getStoryStore(window);
-
-    await storyStore.cacheAllCSFFiles();
-
-    if (!storyStore.cachedCSFFiles) {
-      throw new Error('Unable to find cached CSF files in Storybook store');
+    const preview = (window as StorybookGlobals).__STORYBOOK_PREVIEW__;
+    
+    if (!preview) {
+      throw new Error('Unable to find Storybook preview');
+    }
+    
+    console.log('Preview object keys:', Object.keys(preview));
+    
+    // Try using preview.extract() first (recommended for newer Storybook versions)
+    if (typeof preview.extract === 'function') {
+      console.log('Found preview.extract method, using it...');
+      const extracted = await preview.extract();
+      console.log('preview.extract completed, extracted items count:', Object.keys(extracted).length);
+      
+      // Convert individual stories to StorybookStoreItem format
+      const storyItems = Object.values(extracted) as any[];
+      const groupedByComponent = new Map<string, StorybookStoreItem>();
+      
+      for (const story of storyItems) {
+        const componentId = story.componentId || story.id?.split('--')[0] || 'unknown';
+        
+        if (!groupedByComponent.has(componentId)) {
+          // Create meta object from story data
+          groupedByComponent.set(componentId, {
+            meta: {
+              id: componentId,
+              title: story.title || story.kind || 'Unknown',
+              parameters: {
+                fileName: story.parameters?.fileName || '',
+                docs: story.parameters?.docs || {},
+              },
+            },
+            stories: {},
+          });
+        }
+        
+        const item = groupedByComponent.get(componentId)!;
+        item.stories[story.id] = {
+          id: story.id,
+          name: story.name || story.story,
+          parameters: story.parameters || {},
+        };
+      }
+      
+      console.log('Converted to StorybookStoreItem format, component count:', groupedByComponent.size);
+      return Array.from(groupedByComponent.values());
     }
 
-    return Object.values(storyStore.cachedCSFFiles);
+    // Fallback to storyStore approach for older versions
+    const storyStore = getStoryStore(window as StorybookGlobals);
+    
+    console.log('Story store object keys:', Object.keys(storyStore));
+    console.log('Story store cacheAllCSFFiles method:', typeof storyStore.cacheAllCSFFiles);
+
+    // Try different approaches based on Storybook version
+    if (typeof storyStore.cacheAllCSFFiles === 'function') {
+      console.log('Calling cacheAllCSFFiles...');
+      await storyStore.cacheAllCSFFiles();
+      console.log('cacheAllCSFFiles completed');
+    } else {
+      console.log('cacheAllCSFFiles method not found, trying alternative approaches');
+    }
+
+    // Check different possible properties for cached files
+    if (storyStore.cachedCSFFiles) {
+      console.log('Found cachedCSFFiles, count:', Object.keys(storyStore.cachedCSFFiles).length);
+      return Object.values(storyStore.cachedCSFFiles);
+    }
+
+    // Try alternative property names for different Storybook versions
+    if (storyStore.cache) {
+      console.log('Found cache property, trying to use it');
+      return Object.values(storyStore.cache);
+    }
+
+    if (storyStore.stories) {
+      console.log('Found stories property, trying to use it');
+      return Object.values(storyStore.stories);
+    }
+
+    console.log('Available preview properties:', Object.keys(preview));
+    console.log('Available storyStore properties:', Object.keys(storyStore));
+    throw new Error('Unable to find cached CSF files in Storybook store. Available preview properties: ' + Object.keys(preview).join(', ') + '. Available storyStore properties: ' + Object.keys(storyStore).join(', '));
   });
 
   await page.close();
