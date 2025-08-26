@@ -529,7 +529,7 @@ export function generateSummaryHtmlContent(
     }
     
     htmlParts.push('    <div class="component-card">');
-    htmlParts.push(`      <a href="${summaryBaseUrl}llms/${item.meta.id}.txt" class="component-link" target="_blank">${item.meta.title}</a>`);
+    htmlParts.push(`      <a href="${summaryBaseUrl}/llms/${item.meta.id}.txt" class="component-link" target="_blank">${item.meta.title}</a>`);
     if (description) {
       htmlParts.push(`      <div class="component-description">${description}</div>`);
     }
