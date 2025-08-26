@@ -17,6 +17,7 @@ This tool processes Storybook production builds to generate comprehensive docume
 - **MDX Support**: Processes MDX documentation pages and converts HTML to Markdown
 - **Subcomponents**: Handles complex components with subcomponents
 - **LLMs.txt Format**: Generates summary files following the llmstxt.org specification
+- **HTML Summary**: Creates additional HTML index for better tool integration and indexing
 - **Static File Serving**: Uses Playwright routing instead of Express for better reliability
 - **Flexible Configuration**: Supports CLI arguments and config files
 
@@ -80,6 +81,7 @@ The tool generates the following files in your Storybook dist directory:
 ```
 storybook-static/
 ├── llms.txt                    # Main summary file (llmstxt.org format)
+├── llms.html                   # HTML summary for better indexing
 └── llms/
     ├── component-button.txt    # Individual component docs
     ├── component-accordion.txt
@@ -98,6 +100,17 @@ The main summary file follows the [llmstxt.org](https://llmstxt.org/) specificat
 - [Components/Button](https://example.com/llms/components-button.txt): A button component
 - [Components/Accordion](https://example.com/llms/components-accordion.txt): An accordion component
 ```
+
+### HTML Summary File (`llms.html`)
+
+The HTML summary file provides the same content as `llms.txt` but in a web-friendly format that improves indexing for tools like Cursor. It includes:
+
+- **Better Visual Structure**: Uses cards and grids for component organization
+- **Enhanced Navigation**: Clickable links to individual component documentation
+- **Improved Indexing**: HTML structure helps IDEs and tools understand content hierarchy
+- **Mobile Responsive**: Works well on different screen sizes
+
+The HTML file automatically opens individual component `.txt` files in new tabs, preserving the plain text format for LLM consumption while providing better discovery.
 
 ### Individual Component Files
 

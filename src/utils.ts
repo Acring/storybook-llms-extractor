@@ -418,6 +418,9 @@ export async function writeSummaryFile(args: Required<Args>, data: StorybookStor
   const summaryContent = generateSummaryContent(args, data);
   await writeFile(join(args.distPath, 'llms.txt'), summaryContent.join('\n'));
   console.log(`✅ LLMs docs summary written to ${join(args.distPath, 'llms.txt')}`);
+  
+  // Also generate HTML summary for better indexing
+  await writeSummaryHtmlFile(args, data);
 }
 
 /**
@@ -458,6 +461,97 @@ export function generateSummaryContent(
   }
 
   return summary;
+}
+
+/**
+ * Writes the HTML summary file for all store items.
+ * This provides better indexing support for Cursor and other tools.
+ */
+export async function writeSummaryHtmlFile(args: Required<Args>, data: StorybookStoreItem[]) {
+  const htmlContent = generateSummaryHtmlContent(args, data);
+  await writeFile(join(args.distPath, 'llms.html'), htmlContent);
+  console.log(`✅ LLMs docs HTML summary written to ${join(args.distPath, 'llms.html')}`);
+}
+
+/**
+ * Generates the HTML summary file content from the storeItems array.
+ */
+export function generateSummaryHtmlContent(
+  { summaryTitle, summaryDescription, summaryBaseUrl, refs }: Required<Args>,
+  data: StorybookStoreItem[],
+): string {
+  const htmlParts: string[] = [
+    '<!DOCTYPE html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '  <meta charset="UTF-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    `  <title>${summaryTitle}</title>`,
+    '  <style>',
+    '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }',
+    '    h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }',
+    '    h2 { color: #34495e; margin-top: 30px; }',
+    '    .note { background: #f8f9fa; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0; }',
+    '    .component-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }',
+    '    .component-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff; transition: box-shadow 0.2s; }',
+    '    .component-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }',
+    '    .component-link { text-decoration: none; color: #2980b9; font-weight: 500; }',
+    '    .component-link:hover { color: #3498db; }',
+    '    .component-description { color: #666; margin-top: 5px; font-size: 0.9em; }',
+    '    .refs-list { list-style: none; padding: 0; }',
+    '    .refs-list li { background: #f1f8ff; border: 1px solid #c8e6ff; border-radius: 6px; padding: 10px; margin: 10px 0; }',
+    '    .refs-list a { color: #0366d6; text-decoration: none; font-weight: 500; }',
+    '    .refs-list a:hover { text-decoration: underline; }',
+    '  </style>',
+    '</head>',
+    '<body>',
+    `  <h1>${summaryTitle}</h1>`,
+    '  <div class="note">',
+    '    <strong>注意：</strong> 这是使用 LLMs.txt 格式的摘要概览 (<a href="https://llmstxt.org/" target="_blank">https://llmstxt.org/</a>)。',
+    '    每个部分都链接到其纯文本格式 (.txt) 的完整文档文件。点击下面的任何链接查看该部分的详细文档。',
+    '  </div>',
+  ];
+
+  if (summaryDescription) {
+    htmlParts.push(`  <p>${summaryDescription}</p>`);
+  }
+
+  htmlParts.push('  <h2>组件文档</h2>');
+  htmlParts.push('  <div class="component-list">');
+
+  // Add component cards
+  for (const item of data) {
+    const rawDescription = item.meta.parameters?.docs?.description?.component;
+    let description = '';
+    if (rawDescription) {
+      const firstLine = rawDescription.split('\n')[0];
+      description = firstLine || ''; // Handle potential undefined
+    }
+    
+    htmlParts.push('    <div class="component-card">');
+    htmlParts.push(`      <a href="${summaryBaseUrl}llms/${item.meta.id}.txt" class="component-link" target="_blank">${item.meta.title}</a>`);
+    if (description) {
+      htmlParts.push(`      <div class="component-description">${description}</div>`);
+    }
+    htmlParts.push('    </div>');
+  }
+
+  htmlParts.push('  </div>');
+
+  // Add composed Storybook references if any
+  if (refs && refs.length > 0) {
+    htmlParts.push('  <h2>相关 Storybook</h2>');
+    htmlParts.push('  <ul class="refs-list">');
+    for (const ref of refs) {
+      htmlParts.push(`    <li><a href="${ref.url.replace(/\/$/, '')}/llms.txt" target="_blank">${ref.title}</a></li>`);
+    }
+    htmlParts.push('  </ul>');
+  }
+
+  htmlParts.push('</body>');
+  htmlParts.push('</html>');
+
+  return htmlParts.join('\n');
 }
 
 /**
