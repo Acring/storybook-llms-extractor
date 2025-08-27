@@ -446,7 +446,7 @@ export function generateSummaryContent(
     if (description) {
       description = `: ${description.split('\n')[0]}`;
     }
-    summary.push(`- [${item.meta.title}](${summaryBaseUrl}/llms/${item.meta.id}.txt)${description}`);
+    summary.push(`- [${item.meta.title}](${summaryBaseUrl}/llms/${item.meta.id}.html)${description}`);
   }
 
   // Adds links to all composed Storybook
@@ -529,7 +529,7 @@ export function generateSummaryHtmlContent(
     }
     
     htmlParts.push('    <div class="component-card">');
-    htmlParts.push(`      <a href="${summaryBaseUrl}/llms/${item.meta.id}.txt" class="component-link" target="_blank">${item.meta.title}</a>`);
+    htmlParts.push(`      <a href="${summaryBaseUrl}/llms/${item.meta.id}.html" class="component-link" target="_blank">${item.meta.title}</a>`);
     if (description) {
       htmlParts.push(`      <div class="component-description">${description}</div>`);
     }
@@ -557,6 +557,7 @@ export function generateSummaryHtmlContent(
 /**
  * Writes full markdown files for all components from `storeItems`.
  * For MDX pages, render only `fullSource`. For others, render title, description, props, and examples.
+ * Now generates both .txt and .html files.
  */
 export async function writeFullDocsFiles({ distPath }: Required<Args>, data: StorybookStoreItem[]) {
   const llmsDir = join(distPath, 'llms');
@@ -566,10 +567,192 @@ export async function writeFullDocsFiles({ distPath }: Required<Args>, data: Sto
   await mkdir(llmsDir, { recursive: true });
 
   for (const item of data) {
-    const filePath = join(llmsDir, `${item.meta.id}.txt`);
-    const content = generateFullFileContentFromStory(item);
-    await writeFile(filePath, content.join('\n'));
+    // Generate .txt file (original format)
+    const txtFilePath = join(llmsDir, `${item.meta.id}.txt`);
+    const txtContent = generateFullFileContentFromStory(item);
+    await writeFile(txtFilePath, txtContent.join('\n'));
+    
+    // Generate .html file (new format)
+    const htmlFilePath = join(llmsDir, `${item.meta.id}.html`);
+    const htmlContent = generateFullFileHtmlContentFromStory(item);
+    await writeFile(htmlFilePath, htmlContent);
   }
+}
+
+/**
+ * Generates the full HTML content for a given storybook story.
+ */
+export function generateFullFileHtmlContentFromStory(item: StorybookStoreItem): string {
+  const stories = Object.values(item.stories);
+  const isMDXPage = stories.every(s => s.parameters?.docsOnly);
+
+  const htmlParts: string[] = [
+    '<!DOCTYPE html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '  <meta charset="UTF-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    `  <title>${item.meta.title}</title>`,
+    '  <style>',
+    '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; color: #333; }',
+    '    h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }',
+    '    h2 { color: #34495e; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }',
+    '    h3 { color: #2c3e50; margin-top: 25px; }',
+    '    h4 { color: #34495e; margin-top: 20px; }',
+    '    table { border-collapse: collapse; width: 100%; margin: 20px 0; }',
+    '    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }',
+    '    th { background-color: #f8f9fa; font-weight: 600; }',
+    '    code { background: #f1f3f4; padding: 2px 6px; border-radius: 3px; font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace; }',
+    '    pre { background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 16px; overflow-x: auto; }',
+    '    pre code { background: none; padding: 0; }',
+    '    .example-section { background: #f8f9fa; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0; border-radius: 0 6px 6px 0; }',
+    '    .props-table th { background-color: #e8f4fd; }',
+    '    .back-link { display: inline-block; margin-bottom: 20px; color: #3498db; text-decoration: none; }',
+    '    .back-link:hover { text-decoration: underline; }',
+    '  </style>',
+    '</head>',
+    '<body>',
+    '  <a href="../llms.html" class="back-link">← 返回总览</a>',
+    `  <h1>${item.meta.title}</h1>`,
+  ];
+
+  if (isMDXPage) {
+    // For MDX pages, just render the full source content
+    const content = stories.map(s => s.parameters?.fullSource ?? '').filter(Boolean).join('\n\n');
+    if (content) {
+      // Convert markdown to HTML (simple conversion)
+      const htmlContent = convertMarkdownToHtml(content);
+      htmlParts.push(`  <div class="mdx-content">${htmlContent}</div>`);
+    }
+  } else {
+    // For component pages, render structured content
+    const description = extractStoryDescription(item);
+    if (description) {
+      htmlParts.push(`  <p>${description}</p>`);
+    }
+
+    const props = extractComponentProps(item.meta.component);
+    if (props.length > 0) {
+      htmlParts.push('  <h2>Props</h2>');
+      htmlParts.push('  <table class="props-table">');
+      htmlParts.push('    <thead>');
+      htmlParts.push('      <tr>');
+      htmlParts.push('        <th>Name</th>');
+      htmlParts.push('        <th>Type</th>');
+      htmlParts.push('        <th>Required</th>');
+      htmlParts.push('        <th>Default</th>');
+      htmlParts.push('        <th>Description</th>');
+      htmlParts.push('      </tr>');
+      htmlParts.push('    </thead>');
+      htmlParts.push('    <tbody>');
+      
+      for (const prop of props) {
+        htmlParts.push('      <tr>');
+        htmlParts.push(`        <td><code>${prop.name}</code></td>`);
+        htmlParts.push(`        <td><code>${stringifyPropType(prop.type)}</code></td>`);
+        htmlParts.push(`        <td>${prop.required ? 'Yes' : 'No'}</td>`);
+        htmlParts.push(`        <td>${prop.defaultValue ? `<code>${prop.defaultValue}</code>` : ''}</td>`);
+        htmlParts.push(`        <td>${prop.description?.replace(/\n/g, ' ') ?? ''}</td>`);
+        htmlParts.push('      </tr>');
+      }
+      
+      htmlParts.push('    </tbody>');
+      htmlParts.push('  </table>');
+    }
+
+    // Subcomponents
+    if (item.meta.subcomponents) {
+      htmlParts.push('  <h2>Subcomponents</h2>');
+
+      for (const [name, subcomponent] of Object.entries(item.meta.subcomponents)) {
+        const docgen = subcomponent?.__docgenInfo;
+        if (!docgen) {
+          continue;
+        }
+
+        htmlParts.push(`  <h3>${name}</h3>`);
+        if (docgen.description) {
+          htmlParts.push(`  <p>${docgen.description}</p>`);
+        }
+
+        const subcomponentProps = extractComponentProps(subcomponent);
+        if (subcomponentProps.length > 0) {
+          htmlParts.push('  <h4>Props</h4>');
+          htmlParts.push('  <table class="props-table">');
+          htmlParts.push('    <thead>');
+          htmlParts.push('      <tr>');
+          htmlParts.push('        <th>Name</th>');
+          htmlParts.push('        <th>Type</th>');
+          htmlParts.push('        <th>Required</th>');
+          htmlParts.push('        <th>Default</th>');
+          htmlParts.push('        <th>Description</th>');
+          htmlParts.push('      </tr>');
+          htmlParts.push('    </thead>');
+          htmlParts.push('    <tbody>');
+          
+          for (const prop of subcomponentProps) {
+            htmlParts.push('      <tr>');
+            htmlParts.push(`        <td><code>${prop.name}</code></td>`);
+            htmlParts.push(`        <td><code>${stringifyPropType(prop.type)}</code></td>`);
+            htmlParts.push(`        <td>${prop.required ? 'Yes' : 'No'}</td>`);
+            htmlParts.push(`        <td>${prop.defaultValue ? `<code>${prop.defaultValue}</code>` : ''}</td>`);
+            htmlParts.push(`        <td>${prop.description?.replace(/\n/g, ' ') ?? ''}</td>`);
+            htmlParts.push('      </tr>');
+          }
+          
+          htmlParts.push('    </tbody>');
+          htmlParts.push('  </table>');
+        }
+      }
+    }
+
+    // Examples
+    const examples = Object.values(item.stories).map(s => ({
+      title: s.name,
+      description: s.parameters?.docs?.description?.story,
+      source: s.parameters?.fullSource ?? s.parameters.docs?.source?.originalSource,
+    }));
+
+    if (examples.length > 0) {
+      htmlParts.push('  <h2>Examples</h2>');
+      for (const ex of examples) {
+        htmlParts.push('  <div class="example-section">');
+        htmlParts.push(`    <h3>${ex.title}</h3>`);
+        if (ex.description) {
+          htmlParts.push(`    <p>${ex.description}</p>`);
+        }
+        if (ex.source) {
+          htmlParts.push('    <pre><code class="language-tsx">');
+          htmlParts.push(ex.source.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+          htmlParts.push('    </code></pre>');
+        }
+        htmlParts.push('  </div>');
+      }
+    }
+  }
+
+  htmlParts.push('</body>');
+  htmlParts.push('</html>');
+
+  return htmlParts.join('\n');
+}
+
+/**
+ * Simple markdown to HTML converter for basic content
+ */
+function convertMarkdownToHtml(markdown: string): string {
+  return markdown
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(.*)$/gm, '<p>$1</p>')
+    .replace(/<p><h/g, '<h')
+    .replace(/<\/h([1-6])><\/p>/g, '</h$1>')
+    .replace(/<p><\/p>/g, '');
 }
 
 /**

@@ -84,8 +84,11 @@ storybook-static/
 ├── llms.html                   # HTML summary for better indexing
 └── llms/
     ├── component-button.txt    # Individual component docs
+    ├── component-button.html   # Individual component docs in HTML format
     ├── component-accordion.txt
+    ├── component-accordion.html
     └── concepts-introduction.txt # MDX page docs
+    └── concepts-introduction.html # MDX page docs in HTML format
 ```
 
 ### Summary File (`llms.txt`)
