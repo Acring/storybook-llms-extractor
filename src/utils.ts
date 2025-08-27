@@ -418,9 +418,18 @@ export async function writeSummaryFile(args: Required<Args>, data: StorybookStor
   const summaryContent = generateSummaryContent(args, data);
   await writeFile(join(args.distPath, 'llms.txt'), summaryContent.join('\n'));
   console.log(`✅ LLMs docs summary written to ${join(args.distPath, 'llms.txt')}`);
-  
-  // Also generate HTML summary for better indexing
+}
+
+/**
+ * Writes HTML summary and sitemap files after component files are written.
+ * This ensures they are not deleted when the llms directory is cleaned.
+ */
+export async function writeAdditionalFiles(args: Required<Args>, data: StorybookStoreItem[]) {
+  // Generate HTML summary for better indexing
   await writeSummaryHtmlFile(args, data);
+  
+  // Generate sitemap.xml for better SEO and indexing
+  await writeSitemapFile(args, data);
 }
 
 /**
@@ -468,9 +477,11 @@ export function generateSummaryContent(
  * This provides better indexing support for Cursor and other tools.
  */
 export async function writeSummaryHtmlFile(args: Required<Args>, data: StorybookStoreItem[]) {
+  const llmsDir = join(args.distPath, 'llms');
+  await mkdir(llmsDir, { recursive: true });
   const htmlContent = generateSummaryHtmlContent(args, data);
-  await writeFile(join(args.distPath, 'llms.html'), htmlContent);
-  console.log(`✅ LLMs docs HTML summary written to ${join(args.distPath, 'llms.html')}`);
+  await writeFile(join(llmsDir, 'index.html'), htmlContent);
+  console.log(`✅ LLMs docs HTML summary written to ${join(llmsDir, 'index.html')}`);
 }
 
 /**
@@ -612,7 +623,7 @@ export function generateFullFileHtmlContentFromStory(item: StorybookStoreItem): 
     '  </style>',
     '</head>',
     '<body>',
-    '  <a href="../llms.html" class="back-link">← 返回总览</a>',
+    '  <a href="./index.html" class="back-link">← 返回总览</a>',
     `  <h1>${item.meta.title}</h1>`,
   ];
 
@@ -919,4 +930,73 @@ function generateComponentPropsTable(props: StorybookComponentProp[]): string[] 
   content.push('');
 
   return content;
+}
+
+/**
+ * Writes the sitemap.xml file for all store items.
+ * This provides better SEO and indexing support for search engines and crawlers.
+ */
+export async function writeSitemapFile(args: Required<Args>, data: StorybookStoreItem[]) {
+  const llmsDir = join(args.distPath, 'llms');
+  const sitemapContent = generateSitemapContent(args, data);
+  await writeFile(join(llmsDir, 'sitemap.xml'), sitemapContent);
+  console.log(`✅ Sitemap written to ${join(llmsDir, 'sitemap.xml')}`);
+}
+
+/**
+ * Generates the sitemap.xml content from the storeItems array.
+ */
+export function generateSitemapContent(
+  { summaryBaseUrl }: Required<Args>,
+  data: StorybookStoreItem[],
+): string {
+  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  const sitemapParts: string[] = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '',
+    '  <!-- Main summary page -->',
+    '  <url>',
+    `    <loc>${summaryBaseUrl}/llms.txt</loc>`,
+    `    <lastmod>${currentDate}</lastmod>`,
+    '    <changefreq>weekly</changefreq>',
+    '    <priority>1.0</priority>',
+    '  </url>',
+    '',
+    '  <!-- HTML summary index -->',
+    '  <url>',
+    `    <loc>${summaryBaseUrl}/llms/index.html</loc>`,
+    `    <lastmod>${currentDate}</lastmod>`,
+    '    <changefreq>weekly</changefreq>',
+    '    <priority>0.9</priority>',
+    '  </url>',
+    '',
+  ];
+
+  // Add individual component/page URLs
+  for (const item of data) {
+    sitemapParts.push('  <!-- Component/Page documentation -->');
+    
+    // Add .txt file
+    sitemapParts.push('  <url>');
+    sitemapParts.push(`    <loc>${summaryBaseUrl}/llms/${item.meta.id}.txt</loc>`);
+    sitemapParts.push(`    <lastmod>${currentDate}</lastmod>`);
+    sitemapParts.push('    <changefreq>weekly</changefreq>');
+    sitemapParts.push('    <priority>0.8</priority>');
+    sitemapParts.push('  </url>');
+    
+    // Add .html file
+    sitemapParts.push('  <url>');
+    sitemapParts.push(`    <loc>${summaryBaseUrl}/llms/${item.meta.id}.html</loc>`);
+    sitemapParts.push(`    <lastmod>${currentDate}</lastmod>`);
+    sitemapParts.push('    <changefreq>weekly</changefreq>');
+    sitemapParts.push('    <priority>0.7</priority>');
+    sitemapParts.push('  </url>');
+    sitemapParts.push('');
+  }
+
+  sitemapParts.push('</urlset>');
+
+  return sitemapParts.join('\n');
 }

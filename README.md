@@ -81,8 +81,9 @@ The tool generates the following files in your Storybook dist directory:
 ```
 storybook-static/
 ├── llms.txt                    # Main summary file (llmstxt.org format)
-├── llms.html                   # HTML summary for better indexing
 └── llms/
+    ├── index.html              # HTML summary for better indexing
+    ├── sitemap.xml             # Sitemap for better SEO and indexing
     ├── component-button.txt    # Individual component docs
     ├── component-button.html   # Individual component docs in HTML format
     ├── component-accordion.txt
@@ -104,7 +105,7 @@ The main summary file follows the [llmstxt.org](https://llmstxt.org/) specificat
 - [Components/Accordion](https://example.com/llms/components-accordion.txt): An accordion component
 ```
 
-### HTML Summary File (`llms.html`)
+### HTML Summary File (`llms/index.html`)
 
 The HTML summary file provides the same content as `llms.txt` but in a web-friendly format that improves indexing for tools like Cursor. It includes:
 
@@ -114,6 +115,15 @@ The HTML summary file provides the same content as `llms.txt` but in a web-frien
 - **Mobile Responsive**: Works well on different screen sizes
 
 The HTML file automatically opens individual component `.txt` files in new tabs, preserving the plain text format for LLM consumption while providing better discovery.
+
+### Sitemap File (`llms/sitemap.xml`)
+
+The sitemap.xml file provides comprehensive URL mapping for better SEO and search engine indexing:
+
+- **Search Engine Optimization**: Helps search engines discover and index all documentation pages
+- **Comprehensive Coverage**: Includes both `.txt` and `.html` files for each component
+- **Priority Weighting**: Main summary has highest priority, followed by HTML index, then individual components
+- **Update Tracking**: Includes last modification dates and change frequency hints
 
 ### Individual Component Files
 

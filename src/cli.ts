@@ -3,7 +3,7 @@ import { cwd } from 'node:process';
 import yargs from 'yargs';
 
 import type { Args, StorybookRef } from './types';
-import { extractStorybookData, writeSummaryFile, writeFullDocsFiles } from './utils';
+import { extractStorybookData, writeSummaryFile, writeFullDocsFiles, writeAdditionalFiles } from './utils';
 
 main().catch(reason => {
   console.error(reason);
@@ -24,6 +24,9 @@ async function main() {
 
   // Write per component/page files
   await writeFullDocsFiles(args, data);
+
+  // Write HTML summary and sitemap files (after llms directory is ready)
+  await writeAdditionalFiles(args, data);
 
   console.log(`✅ LLMs docs generation complete.`);
   console.log(`ℹ️ You can find the generated files in the Storybook dist folder: ${args.distPath}`);

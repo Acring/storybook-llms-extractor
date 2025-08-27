@@ -1,7 +1,7 @@
 import { argsWithRefs } from './__fixtures__/args';
 import { storybookStoreItems } from './__fixtures__/storybook-store-items';
 
-import { convertHtmlToMarkdown, generateSummaryContent, generateFullFileContentFromStory } from './utils';
+import { convertHtmlToMarkdown, generateSummaryContent, generateFullFileContentFromStory, generateSitemapContent } from './utils';
 
 describe('generate-llms-docs', () => {
   describe('convertHtmlToMarkdown', () => {
@@ -786,6 +786,37 @@ describe('generate-llms-docs', () => {
         - [Charts v9](https://charts.fluentui.dev/llms.txt)
         "
       `);
+    });
+  });
+
+  describe('generateSitemapContent', () => {
+    it('should generate sitemap content', () => {
+      const sitemapContent = generateSitemapContent(argsWithRefs, storybookStoreItems);
+
+      // Test that it's valid XML with the correct structure
+      expect(sitemapContent).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+      expect(sitemapContent).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+      expect(sitemapContent).toContain('</urlset>');
+      
+      // Test that main summary page is included
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms.txt</loc>');
+      
+      // Test that HTML index is included
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/index.html</loc>');
+      
+      // Test that individual component pages are included
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/concepts-introduction.txt</loc>');
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/concepts-introduction.html</loc>');
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/concepts-developer-quick-start.txt</loc>');
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/concepts-developer-quick-start.html</loc>');
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/components-accordion.txt</loc>');
+      expect(sitemapContent).toContain('<loc>https://react.fluentui.dev/llms/components-accordion.html</loc>');
+      
+      // Test priorities are set correctly
+      expect(sitemapContent).toContain('<priority>1.0</priority>'); // Main summary
+      expect(sitemapContent).toContain('<priority>0.9</priority>'); // HTML index
+      expect(sitemapContent).toContain('<priority>0.8</priority>'); // .txt files
+      expect(sitemapContent).toContain('<priority>0.7</priority>'); // .html files
     });
   });
 });
